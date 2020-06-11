@@ -1,8 +1,5 @@
 
-import os
-
-
-def tournament_links():
+def links():
     from bs4 import BeautifulSoup
     # Copied the above result to a text file to avoid calling the API for this info in the future
 
@@ -11,7 +8,6 @@ def tournament_links():
     txtContent = tourns.read()
     tourns.close()
     
-
     # cleans edge case strings
     def clean_name(string, stop_char):
         if stop_char in string:
@@ -25,7 +21,7 @@ def tournament_links():
     # list of links to tournaments that will be further scraped
     links = []
     endpoints = []
-
+    names = []
     # Creating a bs4 object for scraping
     soup = BeautifulSoup(txtContent, 'lxml')
 
@@ -45,6 +41,7 @@ def tournament_links():
 
         # TOURNAMENT NAME
         tournament_name = tournament_header.find('b').string
+        names.append(tournament_name)
 
         # TOURNAMENT DATE
         tournament_date = tournament.find(class_='divCell EventDetails-Left-55 Header').string
@@ -59,7 +56,7 @@ def tournament_links():
             # Skip future tourns
             if first_place[0:3] == 'TBD':
                 continue
-        # Skip tourns without winner information
+        # Skip tournscrape_characterss without winner information
         except IndexError:
             continue
         
@@ -88,7 +85,6 @@ def tournament_links():
         except AttributeError:
             tournament_participants = None
 
-
         # LOCATION
         try:
             # country
@@ -103,6 +99,7 @@ def tournament_links():
             print('att err')
             tournament_city = None
 
+        # OPTIONAL, enter relevant information to a sqlite database:
         # print(f"winner: {winner}, runnerup:{runner_up}, prize:{tournament_prize}, part:{tournament_participants}, loc: {tournament_country}")
         # tournament_entry(tournament_name, tournament_date, tournament_prize, tournament_participants, tournament_city, tournament_country, winner, runner_up, link)
-    return links, endpoints
+    return endpoints, names
