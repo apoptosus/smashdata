@@ -2,6 +2,7 @@ import api_request
 import tournament_data
 import sql_entry
 import time
+from bs4 import BeautifulSoup
 
 # simple cleaning function
 def parser(string, stop_char):
@@ -11,77 +12,12 @@ def parser(string, stop_char):
                 return string[i + 1::]
 
 
-# enters the scraped data in sqlite
-def ssbmrank_scrape():
-    # scrape miom.txt
-    # Reading the copied txt file
-    miom = open("/home/trentley/PycharmProjects/smashdata/version2/miom.txt", "r")
-    txtContent = miom.read()
-    miom.close()
-
-    # Creating a bs4 object for scraping
-    soup = BeautifulSoup(txtContent, 'lxml')
-
-    # separate tables by year content1-content12 (2013 -2019)
-    for table in range(1,13):
-        year_list = soup.find("div", {"class": "content{}".format(table)})
-        year = year_list.find("span")['id']
-        rankings = year_list.find_all("tr")
-        players = []
-
-        for line in rankings:
-            stats = line.find_all("td")
-
-
-            try:
-                rank = stats[0].get_text()
-                
-                name = stats[1].get_text()
-                name = name[1:]
-                if name[-1] == " ":
-                    name = name[:-1]
-                
-                
-                char_info = stats[2].find_all("img")
-                chars = []
-                for char in char_info:
-                    chars.append(char['alt'])
-                chars = ', '.join(chars)
-                
-                points = stats[3].get_text()
-
-                if year == '2013':
-                    change = None
-                    rank_entry(rank, name, chars, points, change, year)
-                
-                if year == '2017' or year == '2018' or year == '2019':
-                    points = float(points)/10
-
-
-                change = stats[4].get_text()[-3:]
-                change = change.replace('+', '')
-                try:
-                    int(change)
-                except ValueError:
-                    change = None
-                print(name, len(name), year, change)
-
-                # run SQLITE ENTRY FUNCTION
-                sql_entry.rank_entry(rank, name, chars, points, change, year)
-            
-            except IndexError:
-                pass 
-
 # data = raw json text
 def scrape_characters(data, tournament_name):
-    from bs4 import BeautifulSoup
-
-    # create bs4 object to parse source code for readability
     soup = BeautifulSoup(data, 'lxml')
-    # print(soup)
     # find all instances of game divisions
     all_sets = soup.find_all(class_="bracket-game")
-    
+
     # Separate code by bracket-game divisions
     # Character data exists outside of this bracket class
     # and requires a different method to obtain and map to players
@@ -118,7 +54,8 @@ def scrape_characters(data, tournament_name):
             p2_name = 'BYE'
         except AttributeError:
             continue
-
+        
+        # Correct for unknown p2 score values
         try:
             int(p2_score)
         except ValueError:
@@ -126,10 +63,8 @@ def scrape_characters(data, tournament_name):
         except UnboundLocalError:
             p2_score = 'N/A'
 
-        ### find character and stage info of the match ###
-        # match is a large code chunk of a single match
+        # find character and stage info of a match
         match = i.find_all(class_="bracket-popup-body-match")
-
         p1_chars_used = set()
         p2_chars_used = set()
         stages = []
@@ -197,14 +132,21 @@ def scrape_characters(data, tournament_name):
         
         print(f"{p1_name}({p1_character}):{p1_score} vs. {p2_name}({p2_character}):{p2_score} \n")
 
-pages, tournament_names = tournament_data.links()
 
-for i in range(965, len(pages)-1):
-    time.sleep(45)
+if __name__ == '__main__':
+    # running this program directly will proceed to scrape all known character matchups from liquipedia's site. Make sure to respect the rate limit.
+    pages, tournament_names = tournament_data.links()
+
+    user_agent = input('Enter name of the user agent the API will see (i.e. Live Score Tracker or Scrapebot 1.0)')
+    email = input('Enter email to send with requests for any problems')
+    for i in range(0, len(pages)-1):
+    # do not lower
+    time.sleep(60)
+    
     try:    
-        data = api_request.make_request(action='parse', page=pages[i], email="treesus14@hotmail.com", save_txt=False)
+        data = api_request.make_request(action='parse', page=pages[i], save_txt=False, user_agent=user_agent, email=email)
     except KeyError:
         continue
+    
     print(f"tournament list number: {i}")
     scrape_characters(data, tournament_names[i])
-    

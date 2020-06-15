@@ -21,6 +21,17 @@ def create_rank_table():
 def create_mus_table():
     pass
 
+def tournament_entry(tournament_name, tournament_date, tournament_prize, tournament_participants, tournament_city, tournament_country, winner, runner_up, link):
+    conn = sqlite3.connect('/home/trentley/smash.db')
+    c = conn.cursor()
+
+    params = tournament_name, tournament_date, tournament_prize, tournament_participants, tournament_city, tournament_country, winner, runner_up, link
+
+    c.executemany("INSERT INTO TOURNAMENTS (NAME, DATE, PRIZE, PARTICIPANTS, CITY, COUNTRY, WINNER, RUNNERUP, LINK) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (params,))
+    conn.commit()
+    conn.close()
+
+    print('{} data entered'.format(tournament_name))
 
 def raw_character_entry(p1_name, char1, stage, p2_name, char2, tournament_name):
     conn = sqlite3.connect('/home/trentley/smash.db')
@@ -41,4 +52,4 @@ def rank_entry(rank, name, chars, points, change, year):
     conn.commit()
     conn.close()
 
-    print('SSBMRANK data entered')
+    print('Entering rank: {}, name: {}, chars: {}, points: {}, change: {}, year: {}'.format(rank, name, chars, points, change, year))
